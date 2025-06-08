@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dodge the falling blocks</title>
+
+  <style>
+    
+  </style>
+
+  
+</head>
+<body>
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dodge the Falling Blocks!</title>
+  <style>
+    body {
+      text-align: center;
+      background: linear-gradient(to bottom, #3498db, #9b59b6);
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+    canvas {
+      background-color: black;
+      display: none;
+      margin: 20px auto;
+      border: 5px solid white;
+    }
+    #menu {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      position: relative;
+      z-index: 2;
+    }
+    button {
+      font-size: 20px;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      cursor: pointer;
+      background-color: white;
+      border-radius: 10px;
+    }
+    #message {
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      margin-top: 10px;
+      white-space: pre-line;
+    }
+    /* Style for the music toggle button */
+    #toggleMusicBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      font-size: 20px;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      background-color: white;
+      border-radius: 10px;
+      z-index: 2;
+    }
+    /* Intro screen styles */
+    #introScreen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: black;
+      position: absolute;
+      top: 0;
+      width: 100%;
+      z-index: 3;
+    }
+    #introMessage {
+      font-size: 40px;
+      font-weight: bold;
+      color: white;
+      animation: glitch 1.5s infinite;
+    }
+    @keyframes glitch {
+      0% { text-shadow: 2px 2px 0 red, -2px -2px 0 blue; }
+      20% { text-shadow: -2px -2px 0 red, 2px 2px 0 blue; }
+      40% { text-shadow: 2px 2px 0 red, -2px -2px 0 blue; }
+      60% { text-shadow: -2px -2px 0 red, 2px 2px 0 blue; }
+      80% { text-shadow: 2px 2px 0 red, -2px -2px 0 blue; }
+      100% { text-shadow: -2px -2px 0 red, 2px 2px 0 blue; }
+    }
+    /* Controls overlay styles */
+    #controlsOverlay {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.9);
+      color: white;
+      z-index: 4;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #controlsOverlay h2 {
+      margin-bottom: 20px;
+    }
+    #controlsOverlay ul {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+    }
+    #controlsOverlay li {
+      margin: 10px 0;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Intro Screen -->
+  <div id="introScreen">
+    <div id="introMessage">Made by Rayhan Sonic Studios</div>
+  </div>
+
+  <!-- Game Menu -->
+  <div id="menu" style="display: none;">
+    <h1>Dodge the Falling Blocks!</h1>
+    <button onclick="startGame(1)">Single Player</button>
+    <button onclick="startGame(2)">2 Players</button>
+    <button onclick="startGame(3)">3 Players</button>
+    <button onclick="toggleControls()">Show Controls</button>
+  </div>
+
+  <!-- Controls Overlay -->
+  <div id="controlsOverlay">
+    <h2>Player Controls</h2>
+    <ul>
+      <li><strong>Player 1:</strong> Left: A, Right: D, Jump: W</li>
+      <li><strong>Player 2:</strong> Left: J, Right: L, Jump: I</li>
+      <li><strong>Player 3:</strong> Left: ArrowLeft, Right: ArrowRight, Jump: ArrowUp</li>
+    </ul>
+    <button onclick="toggleControls()">Close</button>
+  </div>
+
+  <!-- Game Canvas -->
+  <canvas id="gameCanvas"></canvas>
+  <div id="message"></div>
+
+  <!-- Background Music -->
+  <audio id="bgMusic" loop>
+    <source src="BackOnTrack.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+  <button id="toggleMusicBtn" onclick="toggleMusic()">🔊 Toggle Music</button>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const menu = document.getElementById("menu");
+    const introScreen = document.getElementById("introScreen");
+    const controlsOverlay = document.getElementById("controlsOverlay");
+    let numPlayers = 1;
+    let winMessage = "";
+    
+    canvas.width = 600;
+    canvas.height = 400;
+
+    // AFK time limit in milliseconds (3 seconds)
+    const AFK_TIME_LIMIT = 3000;
+
+    // Define the original play area width for scaling purposes.
+    const originalPlayAreaWidth = 500;
+
+    // Score variables (only used in single-player mode).
+    let score = 0;
+    let groundBlockCount = 0;
+    let highScore = 0;
+
+    const players = [
+      { 
+        x: 100, y: 300, width: 20, height: 20, color: "red", 
+        keyLeft: "a", keyRight: "d", keyJump: "w", 
+        alive: false, velocityY: 0, lastActive: Date.now() 
+      },
+      { 
+        x: 270, y: 300, width: 20, height: 20, color: "yellow", 
+        keyLeft: "j", keyRight: "l", keyJump: "i", 
+        alive: false, velocityY: 0, lastActive: Date.now() 
+      },
+      { 
+        x: 450, y: 300, width: 20, height: 20, color: "lime", 
+        keyLeft: "ArrowLeft", keyRight: "ArrowRight", keyJump: "ArrowUp", 
+        alive: false, velocityY: 0, lastActive: Date.now() 
+      }
+    ];
+
+    let blocks = [];
+    let gameRunning = false;
+    const gravity = 0.4;
+    const jumpPower = -8;
+    let playArea = { x: 50, width: originalPlayAreaWidth };
+
+    // Background music control
+    const bgMusic = document.getElementById("bgMusic");
+    let musicStarted = false;
+    function playMusic() {
+      if (!musicStarted) {
+        bgMusic.volume = 0.5; // set an initial volume
+        bgMusic.play().catch(() => console.log("Autoplay blocked"));
+        musicStarted = true;
+      }
+    }
+    function toggleMusic() {
+      if (bgMusic.paused) {
+        bgMusic.play();
+      } else {
+        bgMusic.pause();
+      }
+    }
+
+    // Function to toggle the controls overlay display
+    function toggleControls() {
+      if (controlsOverlay.style.display === "flex") {
+        controlsOverlay.style.display = "none";
+      } else {
+        controlsOverlay.style.display = "flex";
+        controlsOverlay.style.flexDirection = "column";
+      }
+    }
+
+    // Starts the game with a specified number of players.
+    function startGame(playersCount) {
+      playMusic(); // Ensure music starts on first interaction
+      numPlayers = playersCount;
+      winMessage = "";
+      // Reset score and groundBlockCount in single-player mode.
+      if (numPlayers === 1) {
+        score = 0;
+        groundBlockCount = 0;
+      }
+      players.forEach((player, index) => {
+        player.alive = index < numPlayers;
+        if (player.alive) {
+          player.x = (index + 1) * (canvas.width / (numPlayers + 1));
+          player.y = 300;
+          player.velocityY = 0;
+          player.lastActive = Date.now();
+        }
+      });
+      menu.style.display = "none";
+      canvas.style.display = "block";
+      document.getElementById("message").innerText = "";
+      blocks = [];
+      playArea = { x: 50, width: originalPlayAreaWidth };
+      gameRunning = true;
+      bgMusic.play();
+    }
+
+    // Hide intro and show the menu after 3 seconds.
+    setTimeout(function() {
+      introScreen.style.display = "none";
+      menu.style.display = "flex";
+    }, 3000);
+
+    // Creates a new falling block, scaling its size with the play area.
+    function createBlock() {
+      if (!gameRunning) return;
+      const scale = playArea.width / originalPlayAreaWidth;
+      let block = {
+        x: Math.random() * (playArea.width - 50 * scale) + playArea.x,
+        y: -100,
+        width: (60 + Math.random() * 50) * scale,
+        height: (60 + Math.random() * 50) * scale,
+        speed: 4 + Math.random() * 2,
+        color: `hsl(${Math.random() * 360}, 100%, 50%)`
+      };
+      blocks.push(block);
+    }
+
+    // Moves the players based on key presses.
+    function movePlayers() {
+      players.forEach(player => {
+        if (!player.alive) return;
+        if (keys[player.keyLeft] && player.x > playArea.x) player.x -= 7;
+        if (keys[player.keyRight] && player.x + player.width < playArea.x + playArea.width) player.x += 7;
+        if (keys[player.keyJump] && player.y >= 300) player.velocityY = jumpPower;
+        player.velocityY += gravity;
+        player.y += player.velocityY;
+        if (player.y > 300) {
+          player.y = 300;
+          player.velocityY = 0;
+        }
+      });
+    }
+
+    // Moves falling blocks and updates score in single-player mode.
+    function moveBlocks() {
+      let remainingBlocks = [];
+      blocks.forEach(block => {
+        block.y += block.speed;
+        if (block.y > canvas.height) {
+          // In single-player mode, count blocks that hit the ground.
+          if (numPlayers === 1) {
+            groundBlockCount++;
+            if (groundBlockCount >= 5) {
+              score++;
+              groundBlockCount = 0;
+            }
+          }
+        } else {
+          remainingBlocks.push(block);
+        }
+      });
+      blocks = remainingBlocks;
+    }
+
+    // Checks collisions between players and blocks and deadly walls.
+    function checkCollisions() {
+      players.forEach(player => {
+        if (!player.alive) return;
+        // Check collision with blocks.
+        blocks.forEach(block => {
+          if (
+            player.x < block.x + block.width &&
+            player.x + player.width > block.x &&
+            player.y < block.y + block.height &&
+            player.y + player.height > block.y
+          ) {
+            player.alive = false;
+            if (numPlayers === 1) {
+              winMessage = "GAME OVER\nPress R to restart, or M for menu.";
+              gameRunning = false;
+            } else {
+              document.getElementById("message").innerText = `${player.color.toUpperCase()} DIED! ☠️`;
+            }
+          }
+        });
+        // Check collision with deadly walls (left and right boundaries).
+        if (player.x <= playArea.x || player.x + player.width >= playArea.x + playArea.width) {
+          player.alive = false;
+          if (numPlayers === 1) {
+            winMessage = "GAME OVER\nPress R to restart, or M for menu.";
+            gameRunning = false;
+          } else {
+            document.getElementById("message").innerText = `${player.color.toUpperCase()} DIED (WALL)! ☠️`;
+          }
+        }
+      });
+    }
+
+    // Checks if any player has been AFK for more than the limit.
+    function checkAFK() {
+      const now = Date.now();
+      players.forEach(player => {
+        if (player.alive && (now - player.lastActive > AFK_TIME_LIMIT)) {
+          player.alive = false;
+          if (numPlayers === 1) {
+            winMessage = "GAME OVER\nPress R to restart, or M for menu.";
+            gameRunning = false;
+          } else {
+            document.getElementById("message").innerText = `${player.color.toUpperCase()} DIED (AFK)! ☠️`;
+          }
+        }
+      });
+    }
+
+    // Shrinks the play area (closing the walls) based on the number of players.
+    function shrinkWalls() {
+      if (numPlayers === 2 || numPlayers === 3) {
+        playArea.width -= 0.5;
+        if (playArea.width < 200) playArea.width = 200; // Minimum width for the play area
+      }
+    }
+
+    // Checks if only one player remains alive in multiplayer mode.
+    function checkOnePlayerLeft() {
+      const alivePlayers = players.filter(player => player.alive);
+      if (numPlayers > 1 && alivePlayers.length === 1 && gameRunning) {
+        gameRunning = false;
+        winMessage = `${alivePlayers[0].color.toUpperCase()} YOU WON!\nPress R to restart, or M for menu.`;
+      }
+    }
+
+    // Draws everything.
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+      ctx.fillRect(playArea.x, 0, playArea.width, canvas.height);
+      players.forEach(player => {
+        if (player.alive) {
+          ctx.fillStyle = player.color;
+          ctx.fillRect(player.x, player.y, player.width, player.height);
+        }
+      });
+      blocks.forEach(block => {
+        ctx.fillStyle = block.color;
+        ctx.fillRect(block.x, block.y, block.width, block.height);
+      });
+      // In single-player mode, display the current score and high score.
+      if (numPlayers === 1) {
+        ctx.fillStyle = "white";
+        ctx.font = "20px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText("Score: " + score, 10, 30);
+        ctx.fillText("High Score: " + highScore, 10, 60);
+      }
+      if (winMessage !== "") {
+        ctx.fillStyle = "white";
+        ctx.font = "30px Arial";
+        ctx.textAlign = "center";
+        const lines = winMessage.split("\n");
+        lines.forEach((line, index) => {
+          ctx.fillText(line, canvas.width / 2, canvas.height / 2 + index * 35);
+        });
+      }
+    }
+
+    // Key handling.
+    const keys = {};
+    window.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      // Update last active time if the key is one of the player's controls.
+      players.forEach(player => {
+        if (player.alive && (e.key === player.keyLeft || e.key === player.keyRight || e.key === player.keyJump)) {
+          player.lastActive = Date.now();
+        }
+      });
+      // Only trigger restart or menu when game is not running.
+      if (!gameRunning) {
+        if (key === "r") resetGameState();
+        if (key === "m") returnToMenu();
+      }
+      keys[e.key] = true;
+    });
+    window.addEventListener("keyup", (e) => keys[e.key] = false);
+
+    // Main game loop.
+    function gameLoop() {
+      if (gameRunning) {
+        movePlayers();
+        moveBlocks();
+        checkCollisions();
+        checkAFK();
+        shrinkWalls();  // Shrink the walls only in multiplayer modes.
+        if (numPlayers > 1) checkOnePlayerLeft();
+      }
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Resets the game state.
+    function resetGameState() {
+      // In single-player mode, update the high score before restarting.
+      if (numPlayers === 1 && score > highScore) {
+        highScore = score;
+      }
+      startGame(numPlayers);
+    }
+
+    // Returns to the main menu.
+    function returnToMenu() {
+      canvas.style.display = "none";
+      menu.style.display = "flex";
+      introScreen.style.display = "none";
+      // Music continues playing in the UI.
+    }
+
+    // Ensure music starts on first user interaction anywhere.
+    document.addEventListener("click", playMusic, { once: true });
+
+    // Initialize the game loop.
+    setInterval(createBlock, 1000); // Create blocks every second.
+    gameLoop();
+  </script>
+</body>
+</html>
+
+
+
+
+  <script>
+    
+  </script>
+</body>
+</html>
