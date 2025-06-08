@@ -1,20 +1,4 @@
 <!DOCTYPE html>
-<html>
-
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dodge the falling blocks</title>
-
-  <style>
-    
-  </style>
-
-  
-</head>
-<body>
-  <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -60,10 +44,10 @@
       margin-top: 10px;
       white-space: pre-line;
     }
-    /* Style for the music toggle button */
+    /* Music toggle */
     #toggleMusicBtn {
       position: fixed;
-      bottom: 20px;
+      top: 20px;
       right: 20px;
       font-size: 20px;
       padding: 10px 20px;
@@ -73,7 +57,7 @@
       border-radius: 10px;
       z-index: 2;
     }
-    /* Intro screen styles */
+    /* Intro */
     #introScreen {
       display: flex;
       justify-content: center;
@@ -99,7 +83,7 @@
       80% { text-shadow: 2px 2px 0 red, -2px -2px 0 blue; }
       100% { text-shadow: -2px -2px 0 red, 2px 2px 0 blue; }
     }
-    /* Controls overlay styles */
+    /* Controls overlay */
     #controlsOverlay {
       display: none;
       position: absolute;
@@ -114,36 +98,66 @@
       align-items: center;
       justify-content: center;
     }
-    #controlsOverlay h2 {
-      margin-bottom: 20px;
-    }
-    #controlsOverlay ul {
-      list-style: none;
-      padding: 0;
-      text-align: left;
-    }
-    #controlsOverlay li {
-      margin: 10px 0;
-      font-size: 20px;
-    }
+    #controlsOverlay h2 { margin-bottom: 20px; }
+    #controlsOverlay ul { list-style: none; padding: 0; text-align: left; }
+    #controlsOverlay li { margin: 10px 0; font-size: 20px; }
+
+```
+/* Base styles for dpad to hide them by default */
+.dpad {
+  position: fixed;
+  bottom: 20px;   /* Position at the bottom */
+  left: 50%;      /* Center horizontally */
+  transform: translateX(-50%);  /* Center D-Pad in the middle */
+  display: none;  /* Hide by default */
+  flex-direction: row;
+  gap: 10px;
+  z-index: 10;
+}
+
+body.mobile .dpad {
+  display: flex; /* Show D-Pad in mobile mode */
+}
+
+#dpad1 {
+  left: 20px;   /* Adjust positioning for Player 1 */
+}
+
+#dpad2 {
+  right: 20px;  /* Adjust positioning for Player 2 */
+}
+
+body.mobile #dpad1, body.mobile #dpad2 {
+  position: fixed;    
+  bottom: 20px;   /* Both D-Pads will be fixed at the bottom */
+}
   </style>
 </head>
 <body>
-  <!-- Intro Screen -->
+  <!-- Intro -->
   <div id="introScreen">
     <div id="introMessage">Made by Rayhan Sonic Studios</div>
   </div>
 
-  <!-- Game Menu -->
+  <!-- Menu -->
+
   <div id="menu" style="display: none;">
     <h1>Dodge the Falling Blocks!</h1>
     <button onclick="startGame(1)">Single Player</button>
     <button onclick="startGame(2)">2 Players</button>
-    <button onclick="startGame(3)">3 Players</button>
+    <button id="threePlayerBtn" onclick="startGame(3)">3 Players</button>
     <button onclick="toggleControls()">Show Controls</button>
   </div>
-
+ 
+  <!-- moblie restart and menu buttons -->
+  <div id="endScreen" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px; color: white; text-align: center; z-index: 1000;">
+  <button id="restartBtn" style="margin: 10px; padding: 10px 20px; font-size: 18px;">Restart</button>
+  <button id="menuBtn" style="margin: 10px; padding: 10px 20px; font-size: 18px;">Menu</button>
+</div>
+  
   <!-- Controls Overlay -->
+
   <div id="controlsOverlay">
     <h2>Player Controls</h2>
     <ul>
@@ -154,344 +168,368 @@
     <button onclick="toggleControls()">Close</button>
   </div>
 
-  <!-- Game Canvas -->
-  <canvas id="gameCanvas"></canvas>
-  <div id="message"></div>
+  <!-- Player 1 D-Pad -->
+<div id="dpad1" class="dpad">
+  <button data-dir="left" data-player="1">◀</button>
+  <button data-dir="up" data-player="1">▲</button>
+  <button data-dir="right" data-player="1">▶</button>
+</div>
 
-  <!-- Background Music -->
+<!-- Player 2 D-Pad -->
+<div id="dpad2" class="dpad">
+  <button data-dir="left" data-player="2">◀</button>
+  <button data-dir="up" data-player="2">▲</button>
+  <button data-dir="right" data-player="2">▶</button>
+</div>
+
+
+  <!-- Canvas & UI -->
+
+<canvas id="gameCanvas"></canvas>
+  <div id="message"></div>
   <audio id="bgMusic" loop>
     <source src="BackOnTrack.mp3" type="audio/mpeg">
-    Your browser does not support the audio element.
   </audio>
   <button id="toggleMusicBtn" onclick="toggleMusic()">🔊 Toggle Music</button>
 
   <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const menu = document.getElementById("menu");
-    const introScreen = document.getElementById("introScreen");
-    const controlsOverlay = document.getElementById("controlsOverlay");
-    let numPlayers = 1;
-    let winMessage = "";
+    // Core elements & state
+    const canvas = document.getElementById("gameCanvas"),
+          ctx = canvas.getContext("2d"),
+          menu = document.getElementById("menu"),
+          introScreen = document.getElementById("introScreen"),
+          controlsOverlay = document.getElementById("controlsOverlay"),
+          threePlayerBtn = document.getElementById("threePlayerBtn"),
+          dpad1 = document.getElementById("dpad1"),
+          dpad2 = document.getElementById("dpad2"),
+          bgMusic = document.getElementById("bgMusic");
+      
+   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     
+    if (isMobile) {
+  document.body.classList.add("mobile");
+} 
+   let numPlayers = 1,
+    gameRunning = false,
+    score = 0,
+    groundBlockCount = 0,
+    highScore = parseInt(localStorage.getItem("highScore")) || 0;
+    blocks = [],
+    winMessage = "";
+
+    // Canvas setup
     canvas.width = 600;
     canvas.height = 400;
-
-    // AFK time limit in milliseconds (3 seconds)
-    const AFK_TIME_LIMIT = 3000;
-
-    // Define the original play area width for scaling purposes.
-    const originalPlayAreaWidth = 500;
-
-    // Score variables (only used in single-player mode).
-    let score = 0;
-    let groundBlockCount = 0;
-    let highScore = 0;
-
-    const players = [
-      { 
-        x: 100, y: 300, width: 20, height: 20, color: "red", 
-        keyLeft: "a", keyRight: "d", keyJump: "w", 
-        alive: false, velocityY: 0, lastActive: Date.now() 
-      },
-      { 
-        x: 270, y: 300, width: 20, height: 20, color: "yellow", 
-        keyLeft: "j", keyRight: "l", keyJump: "i", 
-        alive: false, velocityY: 0, lastActive: Date.now() 
-      },
-      { 
-        x: 450, y: 300, width: 20, height: 20, color: "lime", 
-        keyLeft: "ArrowLeft", keyRight: "ArrowRight", keyJump: "ArrowUp", 
-        alive: false, velocityY: 0, lastActive: Date.now() 
-      }
-    ];
-
-    let blocks = [];
-    let gameRunning = false;
-    const gravity = 0.4;
-    const jumpPower = -8;
+    const AFK_TIME_LIMIT = 3000,
+          originalPlayAreaWidth = 500,
+          gravity = 0.4,
+          jumpPower = -8;
     let playArea = { x: 50, width: originalPlayAreaWidth };
 
-    // Background music control
-    const bgMusic = document.getElementById("bgMusic");
+    const players = [
+      { x:100,y:300,w:20,h:20,color:"red",    keyLeft:"a", keyRight:"d", keyJump:"w", alive:false, velocityY:0, lastActive:Date.now() },
+      { x:270,y:300,w:20,h:20,color:"yellow", keyLeft:"j", keyRight:"l", keyJump:"i", alive:false, velocityY:0, lastActive:Date.now() },
+      { x:450,y:300,w:20,h:20,color:"lime",   keyLeft:"ArrowLeft", keyRight:"ArrowRight", keyJump:"ArrowUp", alive:false, velocityY:0, lastActive:Date.now() }
+    ];
+
+    // Music
     let musicStarted = false;
     function playMusic() {
       if (!musicStarted) {
-        bgMusic.volume = 0.5; // set an initial volume
-        bgMusic.play().catch(() => console.log("Autoplay blocked"));
+        bgMusic.volume = 0.5;
+        bgMusic.play().catch(() => {});
         musicStarted = true;
       }
     }
     function toggleMusic() {
-      if (bgMusic.paused) {
-        bgMusic.play();
-      } else {
-        bgMusic.pause();
-      }
+      bgMusic.paused ? bgMusic.play() : bgMusic.pause();
     }
 
-    // Function to toggle the controls overlay display
+    // Controls overlay toggle
     function toggleControls() {
-      if (controlsOverlay.style.display === "flex") {
-        controlsOverlay.style.display = "none";
-      } else {
-        controlsOverlay.style.display = "flex";
-        controlsOverlay.style.flexDirection = "column";
-      }
+      controlsOverlay.style.display =
+        controlsOverlay.style.display === "flex" ? "none" : "flex";
+      controlsOverlay.style.flexDirection = "column";
     }
+ 
 
-    // Starts the game with a specified number of players.
+  // ==== NEW: hide intro & device prompt ====
+setTimeout(() => {
+  introScreen.style.display = "none";
+  
+  // Checking for mobile based on user agent
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (isMobileDevice) {
+    document.body.classList.add("mobile"); // Add the mobile class for mobile-specific styles
+    threePlayerBtn.style.display = "none";  // Hide the 3 player button (optional for mobile)
+    document.querySelector('button[onclick="toggleControls()"]').style.display = "none"; // Hide the show controls button on mobile
+  } else {
+    document.body.classList.remove("mobile"); // Remove the mobile class for desktop
+  }
+  // Safely hide/show D-pads
+  const dpads = document.querySelectorAll('.dpad');
+  dpads.forEach(dpad => {
+    dpad.style.display = isMobileDevice ? 'flex' : 'none';
+  });
+  
+  
+  menu.style.display = "flex";
+}, 3000);
+    // ==== END NEW ====
+
+    // Touch state
+    const touchState = {
+      1: { left:false, up:false, right:false },
+      2: { left:false, up:false, right:false }
+    };
+    document.querySelectorAll('.dpad button').forEach(btn => {
+      btn.addEventListener('touchstart', e => {
+        touchState[e.currentTarget.dataset.player][e.currentTarget.dataset.dir] = true;
+        players[parseInt(e.currentTarget.dataset.player) - 1].lastActive = Date.now();
+        e.preventDefault();
+      });
+      btn.addEventListener('touchend', e => {
+        touchState[e.currentTarget.dataset.player][e.currentTarget.dataset.dir] = false;
+        players[parseInt(e.currentTarget.dataset.player) - 1].lastActive = Date.now();
+        e.preventDefault();
+      });
+    });
+
+    // Start game
     function startGame(playersCount) {
-      playMusic(); // Ensure music starts on first interaction
+      playMusic();
       numPlayers = playersCount;
       winMessage = "";
-      // Reset score and groundBlockCount in single-player mode.
-      if (numPlayers === 1) {
-        score = 0;
-        groundBlockCount = 0;
-      }
-      players.forEach((player, index) => {
-        player.alive = index < numPlayers;
-        if (player.alive) {
-          player.x = (index + 1) * (canvas.width / (numPlayers + 1));
-          player.y = 300;
-          player.velocityY = 0;
-          player.lastActive = Date.now();
+      if (numPlayers === 1) { score = 0; groundBlockCount = 0; }
+      players.forEach((pl, i) => {
+       pl.alive = i < numPlayers && (!isMobile || i < 2);
+        if (pl.alive) {
+          pl.x = (i+1)*(canvas.width/(numPlayers+1));
+          pl.y = 300; pl.velocityY = 0; pl.lastActive = Date.now();
         }
       });
       menu.style.display = "none";
       canvas.style.display = "block";
       document.getElementById("message").innerText = "";
       blocks = [];
-      playArea = { x: 50, width: originalPlayAreaWidth };
+      playArea.width = originalPlayAreaWidth;
       gameRunning = true;
-      bgMusic.play();
-    }
+      bgMusic.play();  
+      document.getElementById("endScreen").style.display = "none";
+    } 
 
-    // Hide intro and show the menu after 3 seconds.
-    setTimeout(function() {
-      introScreen.style.display = "none";
-      menu.style.display = "flex";
-    }, 3000);
-
-    // Creates a new falling block, scaling its size with the play area.
+    // Block creation
     function createBlock() {
       if (!gameRunning) return;
       const scale = playArea.width / originalPlayAreaWidth;
-      let block = {
-        x: Math.random() * (playArea.width - 50 * scale) + playArea.x,
+      blocks.push({
+        x: Math.random()*(playArea.width-50*scale)+playArea.x,
         y: -100,
-        width: (60 + Math.random() * 50) * scale,
-        height: (60 + Math.random() * 50) * scale,
-        speed: 4 + Math.random() * 2,
-        color: `hsl(${Math.random() * 360}, 100%, 50%)`
-      };
-      blocks.push(block);
-    }
-
-    // Moves the players based on key presses.
-    function movePlayers() {
-      players.forEach(player => {
-        if (!player.alive) return;
-        if (keys[player.keyLeft] && player.x > playArea.x) player.x -= 7;
-        if (keys[player.keyRight] && player.x + player.width < playArea.x + playArea.width) player.x += 7;
-        if (keys[player.keyJump] && player.y >= 300) player.velocityY = jumpPower;
-        player.velocityY += gravity;
-        player.y += player.velocityY;
-        if (player.y > 300) {
-          player.y = 300;
-          player.velocityY = 0;
-        }
+        width: (60+Math.random()*50)*scale,
+        height: (60+Math.random()*50)*scale,
+        speed: 4+Math.random()*2,
+        color: `hsl(${Math.random()*360},100%,50%)`
       });
     }
 
-    // Moves falling blocks and updates score in single-player mode.
-    function moveBlocks() {
-      let remainingBlocks = [];
-      blocks.forEach(block => {
-        block.y += block.speed;
-        if (block.y > canvas.height) {
-          // In single-player mode, count blocks that hit the ground.
-          if (numPlayers === 1) {
-            groundBlockCount++;
-            if (groundBlockCount >= 5) {
-              score++;
-              groundBlockCount = 0;
-            }
-          }
-        } else {
-          remainingBlocks.push(block);
-        }
-      });
-      blocks = remainingBlocks;
-    }
-
-    // Checks collisions between players and blocks and deadly walls.
-    function checkCollisions() {
-      players.forEach(player => {
-        if (!player.alive) return;
-        // Check collision with blocks.
-        blocks.forEach(block => {
-          if (
-            player.x < block.x + block.width &&
-            player.x + player.width > block.x &&
-            player.y < block.y + block.height &&
-            player.y + player.height > block.y
-          ) {
-            player.alive = false;
-            if (numPlayers === 1) {
-              winMessage = "GAME OVER\nPress R to restart, or M for menu.";
-              gameRunning = false;
-            } else {
-              document.getElementById("message").innerText = `${player.color.toUpperCase()} DIED! ☠️`;
-            }
-          }
-        });
-        // Check collision with deadly walls (left and right boundaries).
-        if (player.x <= playArea.x || player.x + player.width >= playArea.x + playArea.width) {
-          player.alive = false;
-          if (numPlayers === 1) {
-            winMessage = "GAME OVER\nPress R to restart, or M for menu.";
-            gameRunning = false;
-          } else {
-            document.getElementById("message").innerText = `${player.color.toUpperCase()} DIED (WALL)! ☠️`;
-          }
-        }
-      });
-    }
-
-    // Checks if any player has been AFK for more than the limit.
-    function checkAFK() {
-      const now = Date.now();
-      players.forEach(player => {
-        if (player.alive && (now - player.lastActive > AFK_TIME_LIMIT)) {
-          player.alive = false;
-          if (numPlayers === 1) {
-            winMessage = "GAME OVER\nPress R to restart, or M for menu.";
-            gameRunning = false;
-          } else {
-            document.getElementById("message").innerText = `${player.color.toUpperCase()} DIED (AFK)! ☠️`;
-          }
-        }
-      });
-    }
-
-    // Shrinks the play area (closing the walls) based on the number of players.
-    function shrinkWalls() {
-      if (numPlayers === 2 || numPlayers === 3) {
-        playArea.width -= 0.5;
-        if (playArea.width < 200) playArea.width = 200; // Minimum width for the play area
-      }
-    }
-
-    // Checks if only one player remains alive in multiplayer mode.
-    function checkOnePlayerLeft() {
-      const alivePlayers = players.filter(player => player.alive);
-      if (numPlayers > 1 && alivePlayers.length === 1 && gameRunning) {
-        gameRunning = false;
-        winMessage = `${alivePlayers[0].color.toUpperCase()} YOU WON!\nPress R to restart, or M for menu.`;
-      }
-    }
-
-    // Draws everything.
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-      ctx.fillRect(playArea.x, 0, playArea.width, canvas.height);
-      players.forEach(player => {
-        if (player.alive) {
-          ctx.fillStyle = player.color;
-          ctx.fillRect(player.x, player.y, player.width, player.height);
-        }
-      });
-      blocks.forEach(block => {
-        ctx.fillStyle = block.color;
-        ctx.fillRect(block.x, block.y, block.width, block.height);
-      });
-      // In single-player mode, display the current score and high score.
-      if (numPlayers === 1) {
-        ctx.fillStyle = "white";
-        ctx.font = "20px Arial";
-        ctx.textAlign = "left";
-        ctx.fillText("Score: " + score, 10, 30);
-        ctx.fillText("High Score: " + highScore, 10, 60);
-      }
-      if (winMessage !== "") {
-        ctx.fillStyle = "white";
-        ctx.font = "30px Arial";
-        ctx.textAlign = "center";
-        const lines = winMessage.split("\n");
-        lines.forEach((line, index) => {
-          ctx.fillText(line, canvas.width / 2, canvas.height / 2 + index * 35);
-        });
-      }
-    }
-
-    // Key handling.
+    // Movement & physics
     const keys = {};
-    window.addEventListener("keydown", (e) => {
-      const key = e.key.toLowerCase();
-      // Update last active time if the key is one of the player's controls.
-      players.forEach(player => {
-        if (player.alive && (e.key === player.keyLeft || e.key === player.keyRight || e.key === player.keyJump)) {
-          player.lastActive = Date.now();
+    window.addEventListener("keydown", e => {
+      if (!isMobile) {
+        players.forEach(pl => {
+          if (pl.alive &&
+              (e.key===pl.keyLeft||e.key===pl.keyRight||e.key===pl.keyJump)) {
+            pl.lastActive = Date.now();
+          }
+        });
+        if (!gameRunning) {
+          if (e.key.toLowerCase()==='r') resetGameState();
+          if (e.key.toLowerCase()==='m') returnToMenu();
         }
-      });
-      // Only trigger restart or menu when game is not running.
-      if (!gameRunning) {
-        if (key === "r") resetGameState();
-        if (key === "m") returnToMenu();
       }
       keys[e.key] = true;
     });
-    window.addEventListener("keyup", (e) => keys[e.key] = false);
+    window.addEventListener("keyup", e => {
+      if (!isMobile) keys[e.key] = false;
+    });
 
-    // Main game loop.
-    function gameLoop() {
-      if (gameRunning) {
+    function movePlayers() {
+      players.forEach((pl, i) => {
+        if (!pl.alive) return;
+        const idx = i+1;
+        if (isMobile && idx<=2) {
+          if (touchState[idx].left  && pl.x>playArea.x)                      pl.x-=7;
+          if (touchState[idx].right && pl.x+pl.w<playArea.x+playArea.width) pl.x+=7;
+          if (touchState[idx].up    && pl.y>=300)                            pl.velocityY=jumpPower;
+        }
+        else if (!isMobile) {
+          if (keys[pl.keyLeft]  && pl.x>playArea.x)                      pl.x-=7;
+          if (keys[pl.keyRight] && pl.x+pl.w<playArea.x+playArea.width) pl.x+=7;
+          if (keys[pl.keyJump]  && pl.y>=300)                            pl.velocityY=jumpPower;
+        }
+        pl.velocityY += gravity;
+        pl.y += pl.velocityY;
+        if (pl.y>300) { pl.y=300; pl.velocityY=0; }
+      });
+    }
+
+    function moveBlocks() {
+      const rem = [];
+      blocks.forEach(b => {
+        b.y += b.speed;
+        if (b.y>canvas.height) {
+          if (numPlayers===1) {
+            groundBlockCount++;
+            if (groundBlockCount>=3) { score++; groundBlockCount=0; }
+          }
+        } else rem.push(b);
+      });
+      blocks = rem;
+    }
+
+    function checkCollisions() {
+      players.forEach(pl => {
+        if (!pl.alive) return;
+        blocks.forEach(b => {
+          if (pl.x<b.x+b.width && pl.x+pl.w>b.x &&
+              pl.y<b.y+b.height && pl.y+pl.h>b.y) {
+            pl.alive = false;
+            if (numPlayers===1) {
+             if (isMobile) {
+  winMessage = "Game Over! Tap a button to continue.";
+} else {
+  winMessage = "GAME OVER\nPress R to restart, or M for menu.";
+}
+               if (isMobile) document.getElementById("endScreen").style.display = "block";
+              gameRunning = false;           
+            } else {
+              document.getElementById("message").innerText = `${pl.color.toUpperCase()} DIED! ☠️`;
+            }
+          }
+        });
+        if (pl.x<=playArea.x||pl.x+pl.w>=playArea.x+playArea.width) {
+          pl.alive = false;
+          if (numPlayers===1) {
+            if (isMobile) {
+  winMessage = "Game Over! Tap a button to continue.";
+} else {
+  winMessage = "GAME OVER\nPress R to restart, or M for menu.";
+}
+            if (isMobile) document.getElementById("endScreen").style.display = "block"
+            gameRunning = false;
+          } else {
+            document.getElementById("message").innerText = `${pl.color.toUpperCase()} DIED (WALL)! ☠️`;
+          }
+        }
+      });
+    }
+
+    function checkAFK() {
+      const now = Date.now();
+      players.forEach(pl => {
+        if (pl.alive && now-pl.lastActive>AFK_TIME_LIMIT) {
+          pl.alive = false;
+          if (numPlayers===1) {
+            if (isMobile) {
+  winMessage = "Game Over! Tap a button to continue.";
+} else {
+  winMessage = "GAME OVER\nPress R to restart, or M for menu.";
+}
+            if (isMobile) document.getElementById("endScreen").style.display = "block";
+            gameRunning = false;
+          } else {
+            document.getElementById("message").innerText = `${pl.color.toUpperCase()} DIED (AFK)! ☠️`;
+          }
+        }
+      });
+    }
+
+    function shrinkWalls() {
+      if (numPlayers>1) playArea.width = Math.max(200, playArea.width - 0.5);
+    }
+
+    function checkOnePlayerLeft() {
+      const alive = players.filter(pl => pl.alive);
+      if (numPlayers>1 && alive.length===1 && gameRunning) {
+        gameRunning = false;
+        if (isMobile) {
+  winMessage = `${alive[0].color.toUpperCase()} WON! Tap a button to continue.`;
+} else {
+  winMessage = `${alive[0].color.toUpperCase()} WON!\nPress R to restart, or M for menu.`;
+}
+
+      if (isMobile) document.getElementById("endScreen").style.display = "block";
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle="rgba(255,255,255,0.2)";
+      ctx.fillRect(playArea.x,0,playArea.width,canvas.height);
+      players.forEach(pl => {
+        if (pl.alive) {
+          ctx.fillStyle = pl.color;
+          ctx.fillRect(pl.x,pl.y,pl.w,pl.h);
+        }
+      });
+      blocks.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x,b.y,b.width,b.height);
+      });
+      if (numPlayers===1) {
+        ctx.fillStyle="white"; ctx.font="20px Arial"; ctx.textAlign="left";
+        ctx.fillText("Score: "+score,10,30);
+        ctx.fillText("High Score: "+highScore,10,60);
+      }
+      if (winMessage) {
+        ctx.fillStyle="white"; ctx.font="30px Arial"; ctx.textAlign="center";
+        winMessage.split("\n").forEach((line,i)=>{
+          ctx.fillText(line,canvas.width/2,canvas.height/2+i*35);
+        });
+      }
+    }
+
+    function resetGameState() {
+  if (numPlayers === 1 && score > highScore) {
+    highScore = score;
+    localStorage.setItem("highScore", highScore);
+  }
+  document.getElementById("endScreen").style.display = "none";  
+  startGame(numPlayers);
+}
+
+    function returnToMenu() {
+      canvas.style.display="none";
+      menu.style.display="flex";
+      introScreen.style.display="none";
+    if (isMobile) {
+  document.getElementById("endScreen").style.display = "none";
+}
+    }
+
+    // Game loop & scheduling
+    document.getElementById("restartBtn").addEventListener("click", () => {
+  resetGameState();
+});
+
+document.getElementById("menuBtn").addEventListener("click", () => {
+  returnToMenu();
+}); 
+    document.addEventListener("click", playMusic, { once:true });
+    setInterval(createBlock, 1000);
+    (function loop(){
+      if(gameRunning){
         movePlayers();
         moveBlocks();
         checkCollisions();
         checkAFK();
-        shrinkWalls();  // Shrink the walls only in multiplayer modes.
-        if (numPlayers > 1) checkOnePlayerLeft();
+        shrinkWalls();
+        if(numPlayers>1) checkOnePlayerLeft();
       }
       draw();
-      requestAnimationFrame(gameLoop);
-    }
-
-    // Resets the game state.
-    function resetGameState() {
-      // In single-player mode, update the high score before restarting.
-      if (numPlayers === 1 && score > highScore) {
-        highScore = score;
-      }
-      startGame(numPlayers);
-    }
-
-    // Returns to the main menu.
-    function returnToMenu() {
-      canvas.style.display = "none";
-      menu.style.display = "flex";
-      introScreen.style.display = "none";
-      // Music continues playing in the UI.
-    }
-
-    // Ensure music starts on first user interaction anywhere.
-    document.addEventListener("click", playMusic, { once: true });
-
-    // Initialize the game loop.
-    setInterval(createBlock, 1000); // Create blocks every second.
-    gameLoop();
-  </script>
-</body>
-</html>
-
-
-
-
-  <script>
-    
+      requestAnimationFrame(loop);
+   })();
   </script>
 </body>
 </html>
