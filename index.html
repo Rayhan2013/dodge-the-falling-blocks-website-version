@@ -396,7 +396,8 @@ setTimeout(() => {
               pl.y<b.y+b.height && pl.y+pl.h>b.y) {
             pl.alive = false;
             if (numPlayers===1) {
-             if (isMobile) {
+             saveHighScoreIfNeeded();
+              if (isMobile) {
   winMessage = "Game Over! Tap a button to continue.";
 } else {
   winMessage = "GAME OVER\nPress R to restart, or M for menu.";
@@ -411,6 +412,7 @@ setTimeout(() => {
         if (pl.x<=playArea.x||pl.x+pl.w>=playArea.x+playArea.width) {
           pl.alive = false;
           if (numPlayers===1) {
+            saveHighScoreIfNeeded();
             if (isMobile) {
   winMessage = "Game Over! Tap a button to continue.";
 } else {
@@ -431,6 +433,7 @@ setTimeout(() => {
         if (pl.alive && now-pl.lastActive>AFK_TIME_LIMIT) {
           pl.alive = false;
           if (numPlayers===1) {
+            saveHighScoreIfNeeded();
             if (isMobile) {
   winMessage = "Game Over! Tap a button to continue.";
 } else {
@@ -491,10 +494,6 @@ setTimeout(() => {
     }
 
     function resetGameState() {
-  if (numPlayers === 1 && score > highScore) {
-    highScore = score;
-    localStorage.setItem("highScore", highScore);
-  }
   document.getElementById("endScreen").style.display = "none";  
   startGame(numPlayers);
 }
@@ -507,7 +506,12 @@ setTimeout(() => {
   document.getElementById("endScreen").style.display = "none";
 }
     }
-
+    function saveHighScoreIfNeeded() {
+  if (numPlayers === 1 && score > highScore) {
+    highScore = score;
+    localStorage.setItem("highScore", highScore);
+  }
+} 
     // Game loop & scheduling
     document.getElementById("restartBtn").addEventListener("click", () => {
   resetGameState();
